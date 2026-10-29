@@ -1,0 +1,7 @@
+import {readFile,writeFile} from 'node:fs/promises';
+// Keep the dependency-free Worker self-contained for the existing Sites build.
+const path=new URL('../worker/index.js',import.meta.url);
+const source=(await readFile(path,'utf8')).split('// EMBEDDED PAGE')[0];
+const html=await readFile(new URL('../web.html',import.meta.url),'utf8');
+const end=`export default {async fetch(req,env){try{const u=new URL(req.url);if(u.pathname.startsWith('/api/')){if(req.method==='POST'&&req.headers.get('Origin')&&req.headers.get('Origin')!==u.origin)return json({error:'Invalid origin'},403);if(!['GET','POST'].includes(req.method))return json({error:'Method not allowed'},405);if(u.pathname==='/api/state'&&req.method!=='GET')return json({error:'Method not allowed'},405);return await api(req,env)}if(u.pathname!=='/')return new Response('Not found',{status:404});return new Response(page,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','Content-Security-Policy':\"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'self'\"}})}catch(e){return json({error:e.status?e.message:'The city server hit a snag. Please retry.'},e.status||500)}}};`;
+await writeFile(path,source+'// EMBEDDED PAGE\nconst page='+JSON.stringify(html)+';\n'+end+'\n');

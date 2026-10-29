@@ -1,56 +1,52 @@
 # City of Secrets: Who Stole the Money?
 
-A multiplayer social deduction mystery for 2–6 players. Prosperity City's treasury is disappearing. Search City Hall, compare evidence, argue in council, and arrest the culprit before $20 million vanishes.
+A satirical multiplayer social-deduction mystery for 2–6 players. City Hall has lost public money. Find the thief before the final hearing—or arrest an innocent and lose the case.
 
-**Play:** https://city-of-secrets-leslie.rightfawn12.chatgpt.site
+Public URL: https://city-of-secrets-leslie.rightfawn12.chatgpt.site
 
-## How to play
+## Play
+1. Enter a name and create a mystery. Share the website and six-character room code.
+2. Each friend joins from their own device. Host starts with 2–6 players.
+3. In 3–6-player mode, the server randomly assigns one secret Embezzler, one Investigator, and honest Officials. Only your own role is returned to your browser.
+4. Each round, privately click a location and lock one action. Actions resolve together. Search, compare private clues, share evidence or lie in chat, and challenge alibis.
+5. The Investigator nominates during discussion. A strict majority of all human players approves an arrest. Correct arrest wins for the city; wrong arrest wins for the Embezzler. No arrest after six rounds lets the culprit escape only with at least $30,000 stolen. Otherwise the city wins by protecting the treasury.
 
-1. Enter a nickname and create a private room. Share the six-character room code and website.
-2. Friends join from separate devices or browser profiles. Everyone marks Ready, then the host starts.
-3. Privately read your assignment: one Embezzler, one Investigator, and up to four innocent officials. Public professions and badge numbers are independent of allegiance.
-4. Each of five rounds has exploration, secret actions, evidence discovery, discussion, and accusation. Pick a room, then lock one action. All players can search and chat.
-5. Embezzler: steal $5m at Finance or Treasury, cover camera footage once, or plant an explicitly unverified memo instead of stealing. Every theft leaves immutable financial evidence.
-6. Investigators and officials: combine finance credential parity, security badge pairs, and contract candidate lists. Search reviews all thefts so far. The Investigator gets one strong forensic signature trace starting in round 3.
-7. Share clues or bluff in council chat. Only the Investigator nominates an arrest. The nominee cannot vote. A strict majority of all eligible players is required; ties and missing votes prevent arrest.
-8. Correct arrest: innocent team wins. Wrong arrest: Embezzler wins. With no arrest, $20m stolen or surviving round 5 wins for the Embezzler. The fourth theft still grants a final council opportunity.
+Two-player mode is cooperative: both humans investigate three fictional suspects. It deliberately does not assign opposing human roles, which would reveal the opponent by elimination. The host is Investigator and the other human is Official. Both must approve an arrest.
 
-### Two-player duel
+## Evidence and deception
+- Finance Office: real unauthorized transfer amount, round, location, and shared credential group. Every badge group has multiple holders.
+- Security Room: real visits in one sampled location/round. Concealment hides the culprit's camera entry and leaves a gap.
+- Records Room: embarrassing personal expenses, or an unverified planted memo naming a suspect.
+- Council Chamber: a real witness observation of a visit.
+- Players recognize others who visited their chosen room. Presence is not an action.
+- Embezzler abilities: steal $10,000 in Finance/Records; forge a memo in Records; conceal in Security. Forging/concealing do not steal money.
+- All players can search or remove their own personal expense file for that round. This does not hide movement.
+- Ledger groups and footage do not state a secret role. Combine independent evidence and challenge lies. The complete action trail is unsealed only after the game.
 
-Both opposing roles are public. The mystery is which transaction was fraudulent. Each theft creates three flagged transfers, one fraudulent and two legitimate. Only the diverted $5m reduces the treasury. Search an **Invoice source** room (Mayor, Records, Council) and an **Access source** room (Finance, Security, Treasury) in different rounds. Each gives two transaction candidates; intersect them. Both independent sources for that transaction's round are required before charging. Correct transaction wins for Investigator; wrong transaction wins for Embezzler. No pretend hidden identity.
+## Architecture and privacy
+Preserves the original Cloudflare Worker, R2 snapshot persistence, seat tokens, conditional ETag writes, same-origin mutation checks, and one-second HTTP polling. No client-authoritative game state. Inputs are allowlisted by phase, location, role, and previous submission. Other players' roles, tokens, choices, votes, and private notebooks are not serialized in their responses. Vote counts appear only as submitted/not-submitted until resolution. Chat is escaped as text and limited to 400 characters with a per-seat cooldown.
 
-### Resilience and secrecy
+New rooms use `mystery/` keys and schema 2. Old budget-game rooms cannot be resumed in the redesign; storage is not deleted.
 
-- No accounts required. Same-browser refresh restores the seat via a private locally stored bearer token. Different tabs in the same browser share storage; use separate profiles for independent players.
-- Server-owned deadlines progress phases on the next request. Missing visits default to Council; missing actions do nothing. Players can unanimously advance reveal, evidence, and discussion or pass accusation early. No host needed after starting, except for a rematch.
-- Roles, clues, actions, hidden truth, tokens, and fraudulent flags are excluded from other players' payloads. Two-player allegiances are intentionally public. Full truth is unsealed only after the game ends.
-- R2 conditional ETag writes serialize competing state changes without lost joins or duplicate actions. Round and phase validation rejects stale submissions.
-- Optional private character objectives recover embarrassing but innocent receipts. These are side achievements, not alternate victory conditions.
-
-## Run and test
-
-Node.js 22+; no package installation or third-party credentials needed.
+## Develop
+Node.js 22+. No dependencies.
 
 ```sh
+node scripts/embed.mjs # after editing web.html
 npm run dev
-# http://localhost:3000 — use separate browser profiles
 npm test
 npm run build
 npm run validate
 ```
 
-The local development server uses in-memory R2-compatible storage; restarting clears local rooms. Production uses persistent Cloudflare R2 through ChatGPT Sites. The dependency-free frontend and Worker API are embedded in `worker/index.js`; `scripts/build.sh` emits `dist/server/index.js`. `.openai/hosting.json` preserves the existing project and BUCKET binding. Public GitHub mirrors source; a GitHub push alone does not publish to Sites.
+`web.html` is the editable frontend. `scripts/embed.mjs` embeds it into the self-contained `worker/index.js`. Build copies the Worker and hosting manifest into `dist/`. Tests use the original in-memory R2-compatible adapter. Production uses persistent R2 with `BUCKET` binding.
+
+## Timing and limits
+Exploration 50 seconds, discussion 60 seconds, arrest votes 35 seconds. All submitted actions or all-ready discussion votes can advance early. Six normal rounds take about 11 minutes. Timers advance on connected-client polling; when no one is connected they resume lazily on the next request. Missing exploration choices become Wait in Council; missing ballots count against approval. A rejected warrant advances the round. Role assignment never depends on the client.
+
+Refresh restores the seat using tab storage; local storage provides same-browser closed-tab fallback. Use separate devices or browser profiles for separate players. Clearing storage/pressing Exit forfeits easy seat recovery. No mid-game joins, host transfer, spectator mode, external matchmaking, automatic expired-object deletion, global anti-abuse rate limit, or disconnect detection. Rooms expire after 24 hours without mutation. Polling typically synchronizes within a second plus network latency. Clue randomness and human bluffing need playtesting for balance; no promise that every short game is solvable from one clue.
 
 ## Validation
+Eleven automated suites cover 3–6-player role privacy, actual theft evidence, both arrest outcomes, duo mode, role escalation rejection, forgery, six-round timeouts, simultaneous actions, ballot privacy, malformed input, and origin checks. Three browser seats exercised joining, hidden roles, theft, searches, false alibi, clue sharing, nomination, majority vote, and reveal.
 
-Eight automated test groups exercise 2/4/6-client synchronization, private response filtering, valid and invalid arrests, concurrent joins, duplicate action protection, covered thefts, five-round survival, four-theft victory, timeout defaults, restored seats, two-player deduction, forensic traces, and rematch resets. Build and artifact ESM validation pass. Tests use an R2-compatible in-memory adapter; production deployment verification is separate. Browser preview was unavailable because the managed preview URL refused the browser connection.
-
-## Current limits
-
-- Live updates use 1.2-second HTTP polling, not WebSockets. Timers resume on requests rather than scheduled background jobs.
-- No bots, spectators, mid-game joins, voice chat, sounds, seat recovery after storage loss, or player removal. Disconnected seats remain and deadlines prevent permanent stalls; their missing votes count against an arrest majority.
-- Room snapshots expire logically after 24 hours without mutation; old R2 objects are not automatically deleted. No production-scale load test, matchmaking, or room-creation rate limiter.
-- Evidence is structured deduction, not free-form forensic simulation. A forensic trace intentionally offers decisive evidence late in the game. Humor events are cosmetic and cannot overwrite financial truth.
-- Original City Hall SVG, CSS map, and badge avatars; no custom animated character artwork. Responsive CSS is implemented; phone hardware testing remains outstanding.
-
-Deadline: October 31, 2026, 11:59 p.m. Pacific.
+See DEVELOPMENT_PLAN.md for competition readiness work. GitHub pushes alone do not deploy Sites; publish the packaged archive with the Sites workflow.
